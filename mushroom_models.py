@@ -1,10 +1,14 @@
 import pandas as pd
 import time
+import numpy as np
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder, StandardScaler
-from sklearn.tree import DecisionTreeClassifier
+from sklearn.tree import DecisionTreeClassifier, plot_tree
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.decomposition import PCA
+from matplotlib.colors import ListedColormap
+from sklearn.inspection import permutation_importance
 
 from sklearn.model_selection import cross_val_score
 from sklearn.metrics import confusion_matrix, classification_report
@@ -20,15 +24,28 @@ column_names = [
     "ring-type", "spore-print-color", "population", "habitat"
 ]
 
-def save_confusion_matrix(model, x_test, y_test, title, filename):
+def save_confusion_matrix(model, x_test, y_test, class_names, title, filename):
     y_pred = model.predict(x_test)
     cm = confusion_matrix(y_test, y_pred)
     
+    # Crea etichette personalizzate per le celle se è una classificazione binaria
+    if len(class_names) == 2:
+        group_names = ['True Neg','False Pos','False Neg','True Pos']
+        group_counts = ["{0:0.0f}".format(value) for value in cm.flatten()]
+        group_percentages = ["{0:.2%}".format(value) for value in cm.flatten()/np.sum(cm)]
+        labels = [f"{v1}\n{v2}\n{v3}" for v1, v2, v3 in zip(group_names, group_counts, group_percentages)]
+        labels = np.asarray(labels).reshape(2,2)
+        annot = labels
+        fmt = ''
+    else:
+        annot = True
+        fmt = 'd'
+
     plt.figure(figsize=(8, 6))
-    sns.heatmap(cm, annot=True, fmt='d', cmap='Blues')
+    sns.heatmap(cm, annot=annot, fmt=fmt, cmap='Blues', xticklabels=class_names, yticklabels=class_names)
     plt.title(f'Matrice di Confusione - {title}')
-    plt.xlabel('Predetto')
-    plt.ylabel('Reale')
+    plt.xlabel('Predicted Label')
+    plt.ylabel('True Label')
     plt.savefig(filename)
     plt.close()
     return cm
@@ -57,7 +74,13 @@ def train_rf_model(x_train, y_train):
 
 def preprocces_data(input_data):
     
-    input_data['class'] = LabelEncoder().fit_transform(input_data['class'])
+    le = LabelEncoder()
+    input_data['class'] = le.fit_transform(input_data['class'])
+    
+    # Map 'e' to 'Edible' and 'p' to 'Poisonous'
+    original_classes = le.classes_
+    class_map = {'e': 'Edible', 'p': 'Poisonous'}
+    class_names = [class_map.get(str(c), str(c)) for c in original_classes]
     
     input_data.drop('veil-type', axis=1, inplace=True)  # Rimuoviamo la colonna 'veil-type' poiché ha un solo valore
     
@@ -74,10 +97,99 @@ def preprocces_data(input_data):
     input_data['stalk-root'] = input_data['stalk-root'].replace('?', 'missing')  # Gestiamo i valori mancanti
     
     x = pd.get_dummies(input_data.drop('class', axis=1))
+    feature_names = x.columns.tolist()
     y = input_data['class']
     x_scaled = StandardScaler().fit_transform(x)
     
-    return x_scaled, y
+    return x_scaled, y, feature_names, class_names
+
+def visualize_decision_tree(model, feature_names, class_names, filename):
+    plt.figure(figsize=(20, 10))
+    # plot_tree crea la rappresentazione grafica dell'albero
+    plot_tree(model, feature_names=feature_names, class_names=class_names, filled=True, rounded=True, fontsize=10)
+    plt.title("Visualizzazione Albero di Decisione")
+    plt.savefig(filename)
+    plt.close()
+
+def visualize_knn_boundaries(x_train, y_train, k, class_names, filename='knn_decision_boundaries.png'):
+    # PCA to reduce to 2 components
+    pca = PCA(n_components=2)
+    X_reduced = pca.fit_transform(x_train)
+
+    # Train a new KNN on the 2D reduced data
+    knn_2d = KNeighborsClassifier(n_neighbors=k)
+    knn_2d.fit(X_reduced, y_train)
+    
+    # Calcoliamo lo score del modello 2D per mostrarlo
+    score_2d = knn_2d.score(X_reduced, y_train)
+
+    # Create meshgrid for boundary visualization
+    h = .02  # step size in the mesh
+    x_min, x_max = X_reduced[:, 0].min() - 1, X_reduced[:, 0].max() + 1
+    y_min, y_max = X_reduced[:, 1].min() - 1, X_reduced[:, 1].max() + 1
+    xx, yy = np.meshgrid(np.arange(x_min, x_max, h),
+                         np.arange(y_min, y_max, h))
+
+    # Predict class for each point in meshgrid
+    Z = knn_2d.predict(np.c_[xx.ravel(), yy.ravel()])
+    Z = Z.reshape(xx.shape)
+
+    # Convert y_train to numpy if it's a pandas Series
+    y_train_np = y_train.values if hasattr(y_train, 'values') else y_train
+
+    # Create color maps
+    cmap_light = ListedColormap(['#FFAAAA', '#AAFFAA']) # Colors for regions
+    cmap_bold = ListedColormap(['#FF0000', '#00FF00']) # Colors for points
+
+    plt.figure(figsize=(12, 10))
+    plt.contourf(xx, yy, Z, cmap=cmap_light, alpha=0.3) # Decision regions
+    
+    # Scatter plot of training points
+    scatter = plt.scatter(X_reduced[:, 0], X_reduced[:, 1], c=y_train_np, 
+                          cmap=cmap_bold, edgecolor='k', s=20)
+    
+    plt.legend(handles=scatter.legend_elements()[0], labels=class_names, title="Classes")
+    plt.title(f"KNN Boundaries (2D PCA) - Acc. Visiva: {score_2d:.2%}\n(Il modello reale usa tutte le feature ed è più accurato)")
+    plt.xlabel('Principal Component 1')
+    plt.ylabel('Principal Component 2')
+    
+    # Miglioramento della scala e della griglia
+    plt.grid(True, which='major', linestyle='-', linewidth=0.75, alpha=0.8)
+    plt.grid(True, which='minor', linestyle=':', linewidth=0.5, alpha=0.5)
+    plt.minorticks_on()
+    
+    # Aumenta la frequenza dei tick sugli assi se necessario (opzionale, ma aiuta la precisione)
+    from matplotlib.ticker import AutoMinorLocator
+    plt.gca().xaxis.set_minor_locator(AutoMinorLocator())
+    plt.gca().yaxis.set_minor_locator(AutoMinorLocator())
+
+    plt.savefig(filename, dpi=300)
+    plt.close()
+
+def plot_feature_importance(model, feature_names, title, filename, x_data=None, y_data=None, top_n=20):
+    
+    if hasattr(model, 'feature_importances_'):
+        importances = model.feature_importances_
+    elif x_data is not None and y_data is not None:
+        print(f"Calcolo Permutation Importance per {title} (richiede tempo)...")
+        # n_repeats determina quante volte mescolare ogni feature. Più è alto, più è stabile ma lento.
+        result = permutation_importance(model, x_data, y_data, n_repeats=10, random_state=42, n_jobs=-1)
+        importances = result.importances_mean
+    else:
+        print(f"Il modello {title} non supporta la feature importance diretta e non sono stati forniti dati per la permutation importance.")
+        return
+
+    indices = np.argsort(importances)[::-1][:top_n]
+    
+    plt.figure(figsize=(12, 8))
+    plt.title(f"Top {top_n} Feature Importance - {title}")
+    plt.bar(range(len(indices)), importances[indices], align="center")
+    plt.xticks(range(len(indices)), [feature_names[i] for i in indices], rotation=90)
+    plt.xlim([-1, len(indices)])
+    plt.tight_layout()
+    plt.ylabel("Importanza")
+    plt.savefig(filename)
+    plt.close()
 
 def main():
     # Caricamento del dataset
@@ -85,7 +197,7 @@ def main():
     
     # Preprocessing dei dati e suddivisione in train e test set
     print("\nPreprocessing dei dati...")
-    x_scaled, y = preprocces_data(df)
+    x_scaled, y, feature_names, class_names = preprocces_data(df)
     x_train, x_test, y_train, y_test = train_test_split(x_scaled, y, test_size=0.2, random_state=42)
     
     print("\nAddestramento dei modelli...\n")
@@ -135,10 +247,20 @@ def main():
     print(f"Random Forest CV Accuracy (Deviazione Standard): {rf_cv_std * 100:.2f}%\n")
     
     print("\nSalvataggio matrici di confusione...")
-    save_confusion_matrix(dt, x_test, y_test, "Decision Tree", "confusion_matrix_dt.png")
-    save_confusion_matrix(knn, x_test, y_test, "k-NN", "confusion_matrix_knn.png")
-    save_confusion_matrix(rf, x_test, y_test, "Random Forest", "confusion_matrix_rf.png")
+    save_confusion_matrix(dt, x_test, y_test, class_names, "Decision Tree", "confusion_matrix_dt.png")
+    save_confusion_matrix(knn, x_test, y_test, class_names, "k-NN", "confusion_matrix_knn.png")
+    save_confusion_matrix(rf, x_test, y_test, class_names, "Random Forest", "confusion_matrix_rf.png")
     print("\nMatrici salvate come immagini PNG.")
+    
+    print("\nGenerazione grafici aggiuntivi...")
+    visualize_decision_tree(dt, feature_names, class_names, "decision_tree_viz.png")
+    visualize_knn_boundaries(x_train, y_train, k=5, class_names=class_names, filename="knn_decision_boundaries.png")
+    
+    plot_feature_importance(knn, feature_names, "k-NN", "feature_importance_knn.png", x_data=x_test, y_data=y_test)
+    plot_feature_importance(dt, feature_names, "Decision Tree", "feature_importance_dt.png")
+    plot_feature_importance(rf, feature_names, "Random Forest", "feature_importance_rf.png")
+    
+    print("Grafici salvati.")
     
 if __name__ == "__main__":
     main()
