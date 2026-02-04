@@ -117,9 +117,6 @@ def main():
     
     input_data.drop('veil-type', axis=1, inplace=True)  # Rimuoviamo la colonna 'veil-type' poiché ha un solo valore
     input_data.drop('stalk-root', axis=1, inplace=True)  # Rimuoviamo la colonna 'stalk-root' per semplicità
-    input_data.drop('gill-color', axis=1, inplace=True)  # Rimuoviamo la colonna 'gill-color' per semplicità
-    input_data.drop('gill-size', axis=1, inplace=True)  # Rimuoviamo la colonna 'gill-size' per semplicità
-    
     
     x = pd.get_dummies(input_data.drop('class', axis=1))
     y = input_data['class']
