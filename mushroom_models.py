@@ -143,14 +143,3 @@ def main():
 if __name__ == "__main__":
     main()
     
-    
-# 2. Matrice di Confusione per il k-NN (Esempio)
-# y_pred_knn = knn.predict(X_test)
-# cm = confusion_matrix(y_test, y_pred_knn)
-
-# plt.figure(figsize=(6,4))
-# sns.heatmap(cm, annot=True, fmt='d', cmap='Blues')
-# plt.title('Matrice di Confusione - k-NN')
-# plt.xlabel('Predetto')
-# plt.ylabel('Reale')
-# plt.show()

@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 from sklearn.calibration import LabelEncoder
 from sklearn.preprocessing import StandardScaler
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import cross_val_score, train_test_split, StratifiedKFold
 
 column_names = [
     "class", "cap-shape", "cap-surface", "cap-color", "bruises", "odor",
@@ -44,6 +44,10 @@ def decision_tree_train(X, y):
             for threshold in thresholds:
                 left_indices = X[:, feature_index] <= threshold
                 right_indices = X[:, feature_index] > threshold
+
+                if len(y[left_indices]) == 0 or len(y[right_indices]) == 0:
+                    continue
+
                 left_gini = gini_impurity(y[left_indices])
                 right_gini = gini_impurity(y[right_indices])
                 total_gini = (len(y[left_indices]) * left_gini + len(y[right_indices]) * right_gini) / num_samples
@@ -52,6 +56,10 @@ def decision_tree_train(X, y):
                     best_threshold = threshold
                     best_gini = total_gini
         
+        if best_feature is None:
+             vals, counts = np.unique(y, return_counts=True)
+             return DecisionNode(value=vals[np.argmax(counts)])
+
         left_indices = X[:, best_feature] <= best_threshold
         right_indices = X[:, best_feature] > best_threshold
         
@@ -80,11 +88,39 @@ def decision_tree_predict(tree, sample):
     else:
         return decision_tree_predict(tree.right, sample)
 
+def cross_validation_score(X, y, cv=10):
+    kf = StratifiedKFold(n_splits=cv, shuffle=True, random_state=42)
+    accuracies = []
+    
+    # Ensure y is numpy array
+    y = y.values if hasattr(y, 'values') else y
+    
+    print(f"Starting Cross-Validation with {cv} folds...")
+    
+    for i, (train_idx, test_idx) in enumerate(kf.split(X, y)):
+        X_train, X_test = X[train_idx], X[test_idx]
+        y_train, y_test = y[train_idx], y[test_idx]
+        
+        tree = decision_tree_train(X_train, y_train)
+        predictions = [decision_tree_predict(tree, sample) for sample in X_test]
+        
+        acc = sum(1 for pred, true in zip(predictions, y_test) if pred == true) / len(y_test)
+        accuracies.append(acc)
+        # Optional: print per-fold accuracy
+        # print(f"Fold {i+1}: {acc:.4f}")
+        
+    return np.mean(accuracies), np.std(accuracies)
+
 def main():
     input_data = pd.read_csv('mushroom/mushroom.csv', header=None, names=column_names)
     input_data['class'] = LabelEncoder().fit_transform(input_data['class'])
+    
     input_data.drop('veil-type', axis=1, inplace=True)  # Rimuoviamo la colonna 'veil-type' poiché ha un solo valore
-    input_data['stalk-root'] = input_data['stalk-root'].replace('?', 'missing')  # Gestiamo i valori mancanti
+    input_data.drop('stalk-root', axis=1, inplace=True)  # Rimuoviamo la colonna 'stalk-root' per semplicità
+    input_data.drop('gill-color', axis=1, inplace=True)  # Rimuoviamo la colonna 'gill-color' per semplicità
+    input_data.drop('gill-size', axis=1, inplace=True)  # Rimuoviamo la colonna 'gill-size' per semplicità
+    
+    
     x = pd.get_dummies(input_data.drop('class', axis=1))
     y = input_data['class']
     x_scaled = StandardScaler().fit_transform(x)
@@ -99,6 +135,10 @@ def main():
     # Evaluate the predictions
     accuracy = sum(1 for pred, true in zip(predictions, y_test) if pred == true) / len(y_test)
     print("Accuracy:", accuracy)
+    
+    print("Decision Tree model trained and evaluated.")
+    mean_acc, std_acc = cross_validation_score(x_scaled, y, cv=10)
+    print(f"Cross-Validation Accuracy: {mean_acc:.4f} (+/- {std_acc:.4f})")
     
 if __name__ == "__main__":
     main()
