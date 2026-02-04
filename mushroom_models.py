@@ -24,6 +24,7 @@ column_names = [
     "ring-type", "spore-print-color", "population", "habitat"
 ]
 
+# Save confusion matrix as heatmap
 def save_confusion_matrix(model, x_test, y_test, class_names, title, filename):
     y_pred = model.predict(x_test)
     cm = confusion_matrix(y_test, y_pred)
@@ -50,28 +51,34 @@ def save_confusion_matrix(model, x_test, y_test, class_names, title, filename):
     plt.close()
     return cm
 
+# Cross-validation score
 def cross_validation_score(model, x_data, y_data, cv=10):
     scores = cross_val_score(model, x_data, y_data, cv=cv)
     return scores.mean(), scores.std()
 
+# Evaluate model accuracy
 def model_accuracy(model, x_test, y_test):
     return model.score(x_test, y_test)
 
+# Train Decision Tree model
 def train_tree_model(x_train, y_train):
     model = DecisionTreeClassifier(max_depth=5)
     model.fit(x_train, y_train)
     return model
 
+# Train k-NN model
 def train_knn_model(x_train, y_train):
     model = KNeighborsClassifier(n_neighbors=5)
     model.fit(x_train, y_train)
     return model
 
+# Train Random Forest model
 def train_rf_model(x_train, y_train):
-    model = RandomForestClassifier(n_estimators=100)
+    model = RandomForestClassifier(n_estimators=10)
     model.fit(x_train, y_train)
     return model
 
+# Preprocess data
 def preprocces_data(input_data):
     
     le = LabelEncoder()
@@ -103,6 +110,7 @@ def preprocces_data(input_data):
     
     return x_scaled, y, feature_names, class_names
 
+# Visualize Decision Tree
 def visualize_decision_tree(model, feature_names, class_names, filename):
     plt.figure(figsize=(20, 10))
     # plot_tree crea la rappresentazione grafica dell'albero
@@ -111,6 +119,7 @@ def visualize_decision_tree(model, feature_names, class_names, filename):
     plt.savefig(filename)
     plt.close()
 
+# Visualize k-NN decision boundaries using PCA reduction to 2D
 def visualize_knn_boundaries(x_train, y_train, k, class_names, filename='knn_decision_boundaries.png'):
     # PCA to reduce to 2 components
     pca = PCA(n_components=2)
@@ -166,6 +175,19 @@ def visualize_knn_boundaries(x_train, y_train, k, class_names, filename='knn_dec
     plt.savefig(filename, dpi=300)
     plt.close()
 
+# Visualize first N trees of Random Forest
+def visualize_random_forest_trees(model, feature_names, class_names, filename, num_trees=5):
+    plt.figure(figsize=(20, 10))
+    for i in range(num_trees):
+        plt.subplot(1, num_trees, i+1)
+        plot_tree(model.estimators_[i], feature_names=feature_names, class_names=class_names, filled=True, rounded=True, fontsize=10)
+        plt.title(f"Tree {i+1}")
+    plt.suptitle("Random Forest - Primi 5 alberi")
+    plt.tight_layout()
+    plt.savefig(filename, dpi=300)
+    plt.close()
+
+# Plot feature importance for models that support it
 def plot_feature_importance(model, feature_names, title, filename, x_data=None, y_data=None, top_n=20):
     
     if hasattr(model, 'feature_importances_'):
@@ -246,21 +268,20 @@ def main():
     print(f"Random Forest CV Accuracy (Media): {rf_cv_mean * 100:.2f}%")
     print(f"Random Forest CV Accuracy (Deviazione Standard): {rf_cv_std * 100:.2f}%\n")
     
-    print("\nSalvataggio matrici di confusione...")
+    print("Salvataggio matrici di confusione...")
     save_confusion_matrix(dt, x_test, y_test, class_names, "Decision Tree", "confusion_matrix_dt.png")
     save_confusion_matrix(knn, x_test, y_test, class_names, "k-NN", "confusion_matrix_knn.png")
     save_confusion_matrix(rf, x_test, y_test, class_names, "Random Forest", "confusion_matrix_rf.png")
     print("\nMatrici salvate come immagini PNG.")
     
-    print("\nGenerazione grafici aggiuntivi...")
+    print("\nGenerazione grafici aggiuntivi...\n")
     visualize_decision_tree(dt, feature_names, class_names, "decision_tree_viz.png")
     visualize_knn_boundaries(x_train, y_train, k=5, class_names=class_names, filename="knn_decision_boundaries.png")
     
     plot_feature_importance(knn, feature_names, "k-NN", "feature_importance_knn.png", x_data=x_test, y_data=y_test)
     plot_feature_importance(dt, feature_names, "Decision Tree", "feature_importance_dt.png")
     plot_feature_importance(rf, feature_names, "Random Forest", "feature_importance_rf.png")
-    
-    print("Grafici salvati.")
+    print("\nGrafici salvati.")
     
 if __name__ == "__main__":
     main()
