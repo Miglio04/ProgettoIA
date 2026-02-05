@@ -11,7 +11,7 @@ from matplotlib.colors import ListedColormap
 from sklearn.inspection import permutation_importance
 
 from sklearn.model_selection import cross_val_score
-from sklearn.metrics import confusion_matrix, classification_report
+from sklearn.metrics import confusion_matrix
 import seaborn as sns
 import matplotlib.pyplot as plt
 
@@ -123,19 +123,19 @@ def visualize_decision_tree(model, feature_names, class_names, filename):
 def visualize_knn_boundaries(x_train, y_train, k, class_names, filename='knn_decision_boundaries.png'):
     # PCA to reduce to 2 components
     pca = PCA(n_components=2)
-    X_reduced = pca.fit_transform(x_train)
+    x_reduced = pca.fit_transform(x_train)
 
     # Train a new KNN on the 2D reduced data
     knn_2d = KNeighborsClassifier(n_neighbors=k)
-    knn_2d.fit(X_reduced, y_train)
+    knn_2d.fit(x_reduced, y_train)
     
     # Calcoliamo lo score del modello 2D per mostrarlo
-    score_2d = knn_2d.score(X_reduced, y_train)
+    score_2d = knn_2d.score(x_reduced, y_train)
 
     # Create meshgrid for boundary visualization
     h = .02  # step size in the mesh
-    x_min, x_max = X_reduced[:, 0].min() - 1, X_reduced[:, 0].max() + 1
-    y_min, y_max = X_reduced[:, 1].min() - 1, X_reduced[:, 1].max() + 1
+    x_min, x_max = x_reduced[:, 0].min() - 1, x_reduced[:, 0].max() + 1
+    y_min, y_max = x_reduced[:, 1].min() - 1, x_reduced[:, 1].max() + 1
     xx, yy = np.meshgrid(np.arange(x_min, x_max, h),
                          np.arange(y_min, y_max, h))
 
@@ -154,7 +154,7 @@ def visualize_knn_boundaries(x_train, y_train, k, class_names, filename='knn_dec
     plt.contourf(xx, yy, Z, cmap=cmap_light, alpha=0.3) # Decision regions
     
     # Scatter plot of training points
-    scatter = plt.scatter(X_reduced[:, 0], X_reduced[:, 1], c=y_train_np, 
+    scatter = plt.scatter(x_reduced[:, 0], x_reduced[:, 1], c=y_train_np, 
                           cmap=cmap_bold, edgecolor='k', s=20)
     
     plt.legend(handles=scatter.legend_elements()[0], labels=class_names, title="Classes")

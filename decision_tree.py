@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+import time
 from sklearn.calibration import LabelEncoder
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import cross_val_score, train_test_split, StratifiedKFold
@@ -111,31 +112,40 @@ def cross_validation_score(X, y, cv=10):
         
     return np.mean(accuracies), np.std(accuracies)
 
-def main():
+def load_and_preprocess_data():
     input_data = pd.read_csv('mushroom/mushroom.csv', header=None, names=column_names)
     input_data['class'] = LabelEncoder().fit_transform(input_data['class'])
     
     input_data.drop('veil-type', axis=1, inplace=True)  # Rimuoviamo la colonna 'veil-type' poiché ha un solo valore
-    input_data.drop('stalk-root', axis=1, inplace=True)  # Rimuoviamo la colonna 'stalk-root' per semplicità
+    input_data.drop('stalk-root', axis=1, inplace=True)  # Rimuoviamo la colonna 'stalk-root' poiché ha valori mancanti
+    input_data.drop('odor', axis=1, inplace=True)  # Rimuoviamo la colonna 'odor' per peggiorare le prestazioni
     
     x = pd.get_dummies(input_data.drop('class', axis=1))
     y = input_data['class']
     x_scaled = StandardScaler().fit_transform(x)
-    x_train, x_test, y_train, y_test = train_test_split(x_scaled, y, test_size=0.2, random_state=42)
-        
+    
+    return x_scaled, y
 
-    # Train the decision tree
-    tree = decision_tree_train(x_train, y_train.values)
-    # Predict on test data
-    predictions = [decision_tree_predict(tree, sample) for sample in x_test]
-
-    # Evaluate the predictions
+def evaluate_model(tree, X_test, y_test):
+    predictions = [decision_tree_predict(tree, sample) for sample in X_test]
     accuracy = sum(1 for pred, true in zip(predictions, y_test) if pred == true) / len(y_test)
     print("Accuracy:", accuracy)
+
+def main():
+    x_scaled, y = load_and_preprocess_data()
+    x_train, x_test, y_train, y_test = train_test_split(x_scaled, y, test_size=0.2, random_state=42)
     
-    print("Decision Tree model trained and evaluated.")
+    start = time.time()
+    tree = decision_tree_train(x_train, y_train.values)
+    training_time = time.time() - start
+    print(f"\nTraining Time: {training_time:.4f} seconds\n")
+    
+    # Predict on test data
+    evaluate_model(tree, x_test, y_test)
+    print("\nDecision Tree model trained and evaluated.\n")
+    
     mean_acc, std_acc = cross_validation_score(x_scaled, y, cv=10)
-    print(f"Cross-Validation Accuracy: {mean_acc:.4f} (+/- {std_acc:.4f})")
+    print(f"\nCross-Validation Accuracy: {mean_acc:.4f} (+/- {std_acc:.4f})\n")
     
 if __name__ == "__main__":
     main()
