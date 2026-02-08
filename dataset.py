@@ -100,12 +100,15 @@ def train_tree_model(x_train, y_train):
 
 # Train k-NN model
 def train_knn_model(x_train, y_train):
+    # n_neighbors è un iperparametro che specifica il numero di vicini da considerare per fare una previsione.
+    # Impostando n_neighbors=5, stiamo dicendo al modello di guardare i 5 campioni più vicini nel set di addestramento per determinare la classe di un nuovo campione.
     model = KNeighborsClassifier(n_neighbors=5)
     model.fit(x_train, y_train)
     return model
 
 # Train Random Forest model
 def train_rf_model(x_train, y_train):
+    # n_estimators è un iperparametro che specifica il numero di alberi nella foresta.
     model = RandomForestClassifier(n_estimators=10)
     model.fit(x_train, y_train)
     return model
@@ -127,7 +130,7 @@ def preprocces_data(input_data):
     # Rimuoviamo la colonna 'veil-type' poiché ha un solo valore
     input_data.drop('veil-type', axis=1, inplace=True)  
 
-    # Remove or handle other columns if necessary
+    # Colonne rimosse per testare l'impatto sulla performance e sulla precisione
     # input_data.drop('odor', axis=1, inplace=True)
     # input_data.drop('gill-color', axis=1, inplace=True)
     # input_data.drop('gill-size', axis=1, inplace=True)
@@ -161,41 +164,41 @@ def visualize_decision_tree(model, feature_names, class_names, filename):
     plt.savefig(filename)
     plt.close()
 
-# Visualize k-NN decision boundaries using PCA reduction to 2D
+# Funzione per visualizzare i confini decisionali del modello k-NN dopo aver ridotto le dimensioni a 2 usando PCA
 def visualize_knn_boundaries(x_train, y_train, k, class_names, filename='knn_decision_boundaries.png'):
-    # PCA to reduce to 2 components
+    # Riduciamo le dimensioni a 2 usando PCA per poter visualizzare i confini decisionali in un piano 2D
     pca = PCA(n_components=2)
     x_reduced = pca.fit_transform(x_train)
 
-    # Train a new KNN on the 2D reduced data
+    # Addestriamo un nuovo KNN sui dati ridotti a 2D (perdendo informazioni di tutte le altre feature, quindi questo è solo per scopi di visualizzazione e non rappresenta la performance reale del modello)
     knn_2d = KNeighborsClassifier(n_neighbors=k)
     knn_2d.fit(x_reduced, y_train)
     
     # Calcoliamo lo score del modello 2D per mostrarlo
     score_2d = knn_2d.score(x_reduced, y_train)
 
-    # Create meshgrid for boundary visualization
-    h = .02  # step size in the mesh
+    # Creiamo una griglia di punti che copre l'intero spazio 2D per visualizzare i confini decisionali
+    h = .02  # step size nella griglia
     x_min, x_max = x_reduced[:, 0].min() - 1, x_reduced[:, 0].max() + 1
     y_min, y_max = x_reduced[:, 1].min() - 1, x_reduced[:, 1].max() + 1
     xx, yy = np.meshgrid(np.arange(x_min, x_max, h),
                          np.arange(y_min, y_max, h))
 
-    # Predict class for each point in meshgrid
+    # Prevediamo le classi per ogni punto nella griglia usando il modello k-NN addestrato sui dati 2D
     Z = knn_2d.predict(np.c_[xx.ravel(), yy.ravel()])
     Z = Z.reshape(xx.shape)
 
-    # Convert y_train to numpy if it's a pandas Series
+    # Convertiamo y_train in un array numpy se è un pandas Series, altrimenti lo lasciamo com'è (ad esempio, se è già un array numpy)
     y_train_np = y_train.values if hasattr(y_train, 'values') else y_train
 
-    # Create color maps
-    cmap_light = ListedColormap(['#FFAAAA', '#AAFFAA']) # Colors for regions
-    cmap_bold = ListedColormap(['#FF0000', '#00FF00']) # Colors for points
+    # Creiamo le mappe di colori per le regioni e i punti
+    cmap_light = ListedColormap(['#FFAAAA', '#AAFFAA']) # colori chiari per le regioni decisionali (rosso chiaro per una classe, verde chiaro per l'altra)
+    cmap_bold = ListedColormap(['#FF0000', '#00FF00']) # colori più forti per i punti di addestramento (rosso per una classe, verde per l'altra)
 
     plt.figure(figsize=(12, 10))
-    plt.contourf(xx, yy, Z, cmap=cmap_light, alpha=0.3) # Decision regions
+    plt.contourf(xx, yy, Z, cmap=cmap_light, alpha=0.3) # contourf disegna le regioni colorate che rappresentano i confini decisionali del modello k-NN nel piano 2D
     
-    # Scatter plot of training points
+    # Scatter plot dei punti di addestramento
     scatter = plt.scatter(x_reduced[:, 0], x_reduced[:, 1], c=y_train_np, 
                           cmap=cmap_bold, edgecolor='k', s=20)
     
@@ -216,13 +219,16 @@ def visualize_knn_boundaries(x_train, y_train, k, class_names, filename='knn_dec
     plt.savefig(filename, dpi=300)
     plt.close()
 
-# Plot feature importance for models that support it
+# Funzione per calcolare e visualizzare l'importanza delle feature per i modelli che la supportano direttamente (come Decision Tree e Random Forest) o tramite Permutation Importance (come k-NN)
 def plot_feature_importance(model, feature_names, title, filename, x_data=None, y_data=None, top_n=20):
     
     if hasattr(model, 'feature_importances_'):
+        # Se il modello supporta direttamente la feature importance (come Decision Tree e Random Forest), usiamo quella
         importances = model.feature_importances_
     elif x_data is not None and y_data is not None:
+        # Se il modello non supporta la feature importance diretta (come k-NN), ma sono stati forniti i dati, calcoliamo la Permutation Importance
         print(f"Calcolo Permutation Importance per {title}")
+        # La Permutation Importance misura l'importanza di una feature valutando quanto peggiora la performance del modello quando i valori di quella feature vengono mescolati casualmente.
         # n_repeats determina quante volte mescolare ogni feature. Più è alto, più è stabile ma lento.
         result = permutation_importance(model, x_data, y_data, n_repeats=10, random_state=42, n_jobs=-1)
         importances = result.importances_mean
@@ -230,8 +236,10 @@ def plot_feature_importance(model, feature_names, title, filename, x_data=None, 
         print(f"Il modello {title} non supporta la feature importance diretta e non sono stati forniti dati per la permutation importance.")
         return
 
+    # Ordina le feature in base all'importanza e prendi solo le top_n più importanti
     indices = np.argsort(importances)[::-1][:top_n]
     
+    # Creazione del grafico a barre per visualizzare l'importanza delle feature
     plt.figure(figsize=(12, 8))
     plt.title(f"Top {top_n} Feature Importance - {title}")
     plt.bar(range(len(indices)), importances[indices], align="center")
