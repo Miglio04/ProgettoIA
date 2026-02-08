@@ -8,6 +8,7 @@ from sklearn.neighbors import KNeighborsClassifier
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.decomposition import PCA
 from matplotlib.colors import ListedColormap
+from matplotlib.ticker import AutoMinorLocator
 from sklearn.inspection import permutation_importance
 
 from sklearn.model_selection import cross_val_score
@@ -209,22 +210,9 @@ def visualize_knn_boundaries(x_train, y_train, k, class_names, filename='knn_dec
     plt.minorticks_on()
     
     # Aumenta la frequenza dei tick sugli assi se necessario (opzionale, ma aiuta la precisione)
-    from matplotlib.ticker import AutoMinorLocator
     plt.gca().xaxis.set_minor_locator(AutoMinorLocator())
     plt.gca().yaxis.set_minor_locator(AutoMinorLocator())
 
-    plt.savefig(filename, dpi=300)
-    plt.close()
-
-# Visualize first N trees of Random Forest
-def visualize_random_forest_trees(model, feature_names, class_names, filename, num_trees=5):
-    plt.figure(figsize=(20, 10))
-    for i in range(num_trees):
-        plt.subplot(1, num_trees, i+1)
-        plot_tree(model.estimators_[i], feature_names=feature_names, class_names=class_names, filled=True, rounded=True, fontsize=10)
-        plt.title(f"Tree {i+1}")
-    plt.suptitle("Random Forest - Primi 5 alberi")
-    plt.tight_layout()
     plt.savefig(filename, dpi=300)
     plt.close()
 
@@ -259,7 +247,7 @@ def main():
     inizio = time.time()
 
     # Caricamento del dataset
-    df = pd.read_csv('../../mushroom/mushroom.csv', header=None, names=column_names)
+    df = pd.read_csv('mushroom/mushroom.csv', header=None, names=column_names)
     
     # Preprocessing dei dati e suddivisione in train e test set
     print("\nPreprocessing dei dati...")

@@ -31,77 +31,74 @@ class DecisionNode:
         # value: etichetta di classe se è un nodo foglia, null altrimenti
         self.value = value
 
-# Funzione per addestrare l'albero decisionale
-def decision_tree_train(X, y):
-    # costruisce l'albero decisionale ricorsivamente
-    def build_tree(X, y):
-        # num_samples contiene il numero di righe (quanti funghi abbiamo) mentre num_features contiene il numero di colonne (quante caratteristiche ha ogni fungo)
-        num_samples, num_features = X.shape
-        
-        # se non ci sono più campioni ritorna none
-        if num_samples == 0:
-            return None
-        
-        # se tutti i campioni appartengono alla stessa classe, crea un nodo foglia con quella classe
-        if len(set(y)) == 1:
-            return DecisionNode(value=y[0])
-        
-        best_feature = None
-        best_threshold = None
-        best_gini = float('inf')
-        
-        # per ogni feature, prova a trovare la soglia che minimizza l'impurità di Gini
-        for feature_index in range(num_features):
-            # ottieni i valori unici della feature per trovare le possibili soglie di split (ogni valore unico è una possibile soglia, i duplicati vengono eliminati grazie a set())
-            thresholds = set(X[:, feature_index])
-            # per ogni soglia, calcola l'impurità di Gini per lo split e aggiorna il miglior split se necessario
-            for threshold in thresholds:
-                # crea due sottoinsiemi di dati in base alla soglia
-                left_indices = X[:, feature_index] <= threshold
-                right_indices = X[:, feature_index] > threshold
-
-                # se uno dei due sottoinsiemi è vuoto, salta questo split perché non è valido
-                if len(y[left_indices]) == 0 or len(y[right_indices]) == 0:
-                    continue
-                
-                # calcola l'impurità di Gini per i due sottoinsiemi e la media pesata dell'impurità totale
-                left_gini = gini_impurity(y[left_indices])
-                right_gini = gini_impurity(y[right_indices])
-                total_gini = (len(y[left_indices]) * left_gini + len(y[right_indices]) * right_gini) / num_samples
-                
-                # se questo split è migliore del miglior split trovato finora, viene aggiornato il miglior split
-                if total_gini < best_gini:
-                    best_feature = feature_index
-                    best_threshold = threshold
-                    best_gini = total_gini
-        
-        # se non è stato trovato nessuno split valido, crea un nodo foglia con la classe più comune
-        if best_feature is None:
-             vals, counts = np.unique(y, return_counts=True)
-             return DecisionNode(value=vals[np.argmax(counts)])
-
-        # crea i sottoalberi ricorsivamente per i due sottoinsiemi di dati
-        left_indices = X[:, best_feature] <= best_threshold
-        right_indices = X[:, best_feature] > best_threshold
-        
-        left_subtree = build_tree(X[left_indices], y[left_indices])
-        right_subtree = build_tree(X[right_indices], y[right_indices])
-        
-        # ritorna un nodo decisionale con la feature, la soglia e i sottoalberi
-        return DecisionNode(feature=best_feature, threshold=best_threshold, left=left_subtree, right=right_subtree)
+# costruisce l'albero decisionale ricorsivamente
+def build_tree(X, y):
+    # num_samples contiene il numero di righe (quanti funghi abbiamo) mentre num_features contiene il numero di colonne (quante caratteristiche ha ogni fungo)
+    num_samples, num_features = X.shape
     
-    # Calcola l'impurità di Gini
-    def gini_impurity(y):
-        # ottieni le classi uniche presenti nei dati
-        classes = set(y)
-        impurity = 1
-        # per ogni classe, calcola la probabilità di quella classe e sottrai il quadrato di quella probabilità dall'impurità totale
-        for c in classes:
-            p = len(y[y == c]) / len(y)
-            impurity -= p ** 2
-        return impurity
+    # se non ci sono più campioni ritorna none
+    if num_samples == 0:
+        return None
     
-    return build_tree(X, y)
+    # se tutti i campioni appartengono alla stessa classe, crea un nodo foglia con quella classe
+    if len(set(y)) == 1:
+        return DecisionNode(value=y[0])
+    
+    best_feature = None
+    best_threshold = None
+    best_gini = float('inf')
+    
+    # per ogni feature, prova a trovare la soglia che minimizza l'impurità di Gini
+    for feature_index in range(num_features):
+        # ottieni i valori unici della feature per trovare le possibili soglie di split (ogni valore unico è una possibile soglia, i duplicati vengono eliminati grazie a set())
+        thresholds = set(X[:, feature_index])
+        # per ogni soglia, calcola l'impurità di Gini per lo split e aggiorna il miglior split se necessario
+        for threshold in thresholds:
+            # crea due sottoinsiemi di dati in base alla soglia
+            left_indices = X[:, feature_index] <= threshold
+            right_indices = X[:, feature_index] > threshold
+
+            # se uno dei due sottoinsiemi è vuoto, salta questo split perché non è valido
+            if len(y[left_indices]) == 0 or len(y[right_indices]) == 0:
+                continue
+            
+            # calcola l'impurità di Gini per i due sottoinsiemi e la media pesata dell'impurità totale
+            left_gini = gini_impurity(y[left_indices])
+            right_gini = gini_impurity(y[right_indices])
+            total_gini = (len(y[left_indices]) * left_gini + len(y[right_indices]) * right_gini) / num_samples
+            
+            # se questo split è migliore del miglior split trovato finora, viene aggiornato il miglior split
+            if total_gini < best_gini:
+                best_feature = feature_index
+                best_threshold = threshold
+                best_gini = total_gini
+    
+    # se non è stato trovato nessuno split valido, crea un nodo foglia con la classe più comune
+    if best_feature is None:
+            vals, counts = np.unique(y, return_counts=True)
+            return DecisionNode(value=vals[np.argmax(counts)])
+
+    # crea i sottoalberi ricorsivamente per i due sottoinsiemi di dati
+    left_indices = X[:, best_feature] <= best_threshold
+    right_indices = X[:, best_feature] > best_threshold
+    
+    left_subtree = build_tree(X[left_indices], y[left_indices])
+    right_subtree = build_tree(X[right_indices], y[right_indices])
+    
+    # ritorna un nodo decisionale con la feature, la soglia e i sottoalberi
+    return DecisionNode(feature=best_feature, threshold=best_threshold, left=left_subtree, right=right_subtree)
+
+# Calcola l'impurità di Gini
+def gini_impurity(y):
+    # ottieni le classi uniche presenti nei dati
+    classes = set(y)
+    impurity = 1
+    # per ogni classe, calcola la probabilità di quella classe e sottrai il quadrato di quella probabilità dall'impurità totale per ottenere un grado di disordine nei dati
+    for c in classes:
+        p = len(y[y == c]) / len(y)
+        impurity -= p ** 2
+    return impurity
+
 
 # Funzione per fare previsioni con l'albero decisionale
 def decision_tree_predict(tree, sample):
@@ -131,7 +128,7 @@ def cross_validation_score(X, y, cv=10):
         X_train, X_test = X[train_idx], X[test_idx]
         y_train, y_test = y[train_idx], y[test_idx]
         
-        tree = decision_tree_train(X_train, y_train)
+        tree = build_tree(X_train, y_train)
         predictions = [decision_tree_predict(tree, sample) for sample in X_test]
         acc = sum(1 for pred, true in zip(predictions, y_test) if pred == true) / len(y_test)
         accuracies.append(acc)
@@ -180,7 +177,7 @@ def main():
     
     print("\nAddestramento dell'albero di decisione...\n")
     start = time.time()
-    tree = decision_tree_train(x_train, y_train.values)
+    tree = build_tree(x_train, y_train.values)
     training_time = time.time() - start
     print(f"\nTempo di addestramento: {training_time:.4f} secondi\n")
     
