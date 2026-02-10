@@ -31,12 +31,20 @@ FUNCTION train_rf_model(x_train, y_train)
 
     RETURN the Random Forest
 
-FUNCTION load_and_preprocess_data()
+FUNCTION preprocess_data_mushrooms()
     transform the class column with LabelEncoder //valori 0 e 1 per commestibile e velenoso
     remove veil-type and stalk-root columns due to poor impact
     convert the attributes with one-hot-encoding and scale the information
     
     RETURN attributes and classes
+
+FUNCTION preprocess_data_rice()
+    convert the input data into utf-8 strings
+    transform the class colum with LabelEncoder
+    scale the features
+
+    RETURN attributes and classes
+
 
 FUNCTION visualize_decision_tree(model, feature_names, class_names, filename)
     saves the Decision Tree graph in a .png file

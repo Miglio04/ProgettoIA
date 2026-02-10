@@ -3,10 +3,9 @@ import numpy as np
 import time
 from sklearn.calibration import LabelEncoder
 from sklearn.preprocessing import StandardScaler
-from sklearn.model_selection import cross_val_score, train_test_split, StratifiedKFold
-from sklearn.metrics import recall_score, precision_score, confusion_matrix
-import matplotlib.pyplot as plt
-import matplotlib.patches as mpatches
+from sklearn.model_selection import train_test_split, StratifiedKFold
+from sklearn.metrics import recall_score, precision_score
+from scipy.io.arff import loadarff
 
 column_names = [
     "class", "cap-shape", "cap-surface", "cap-color", "bruises", "odor",
@@ -99,7 +98,6 @@ def gini_impurity(y):
         impurity -= p ** 2
     return impurity
 
-
 # Funzione per fare previsioni con l'albero decisionale
 def decision_tree_predict(tree, sample):
     # se il nodo è una foglia, ritorna il valore della classe
@@ -135,9 +133,9 @@ def cross_validation_score(X, y, cv=10):
     # Calcola e ritorna l'accuratezza media e la deviazione standard delle accuratezze ottenute nei diversi fold
     return np.mean(accuracies), np.std(accuracies)
 
-# Funzione per caricare e preprocessare i dati
-def load_and_preprocess_data():
-    input_data = pd.read_csv('mushroom/mushroom.csv', header=None, names=column_names)
+# Funzione per caricare e preprocessare i dati del dataset Mushroom
+def load_and_preprocess_data_mushrooms():
+    input_data = pd.read_csv('datasets/mushroom/mushroom.csv', header=None, names=column_names)
     # Trasformiamo la colonna 'class' in valori numerici (0 per commestibile, 1 per velenoso)
     input_data['class'] = LabelEncoder().fit_transform(input_data['class'])
     
@@ -147,6 +145,33 @@ def load_and_preprocess_data():
     # Convertiamo le variabili categoriche in variabili dummy (one-hot encoding) e standardizziamo i dati
     x = pd.get_dummies(input_data.drop('class', axis=1))
     y = input_data['class']
+    x_scaled = StandardScaler().fit_transform(x)
+    
+    return x_scaled, y
+
+# Funzione per caricare e preprocessare i dati del dataset Rice
+def load_and_preprocess_data_rice():
+    data, meta = loadarff('datasets/rice+cammeo+and+osmancik/Rice_Cammeo_Osmancik.arff')
+    input_data = pd.DataFrame(data)# Quando si caricano i dati da un file ARFF, le colonne di tipo stringa vengono spesso interpretate come array di byte (dtype 'object' in pandas).
+    # Quindi, se la colonna 'Class' è di tipo object, cerchiamo di decodificarla in stringhe leggibili (utf-8) per poterla poi codificare con LabelEncoder.
+    if pd.api.types.is_object_dtype(input_data['Class']):
+        try:
+             input_data['Class'] = input_data['Class'].str.decode('utf-8')
+        except AttributeError:
+            pass
+
+    # la LabelEncoder trasforma le etichette di classe da stringhe a numeri interi (0 e 1)
+    le = LabelEncoder()
+    # qui viene applicato il LabelEncoder alla colonna 'class' del dataset
+    input_data['Class'] = le.fit_transform(input_data['Class'])
+     
+    # La variabile x contiene tutte le feature del dataset, escludendo la colonna 'Class' che è la variabile target.
+    x = input_data.drop('Class', axis=1)
+    
+    # La variabile target y è la colonna 'class' del dataset, che contiene le etichette di classe codificate come numeri interi
+    y = input_data['Class']
+    
+    # Scaliamo le feature usando lo StandardScaler che normalizza le feature per avere media 0 e deviazione standard 1.
     x_scaled = StandardScaler().fit_transform(x)
     
     return x_scaled, y
@@ -168,9 +193,22 @@ def evaluate_model(tree, X_test, y_test):
     print(f"Recall:    {recall * 100:.2f}%")
 
 def main():
-    begin = time.time()
+    print("Inserire 1 se si vogliono analizzare i modelli addestrati sul dataset Mushroom, 2 per il dataset Rice:")
+    choice = input("Scelta: ")
+    
+    x_train, x_test, y_train, y_test = None, None, None, None
+    inizio = time.time()
+    
     print("\nCaricamento e preprocessing dei dati...\n")
-    x_scaled, y = load_and_preprocess_data()
+    if choice == '1':
+        x_scaled, y = load_and_preprocess_data_mushrooms()
+    elif choice == '2':
+        x_scaled, y = load_and_preprocess_data_rice()
+    else:
+        print("Scelta non valida. Uscita.")
+        return
+    
+    
     x_train, x_test, y_train, y_test = train_test_split(x_scaled, y, test_size=0.2, random_state=42)
     
     print("-------------------------------------------------------------------")
@@ -191,11 +229,11 @@ def main():
     
     mean_acc, std_acc = cross_validation_score(x_scaled, y, cv=10)
     print(f"\nAccuratezza con Cross-Validation: {mean_acc * 100:.2f}% (+/- {std_acc * 100:.2f}%)\n")
-    finish = time.time() - begin
+    fine = time.time() - inizio
     
     print("-------------------------------------------------------------------")
     
-    print(f"\nTempo totale di esecuzione: {finish:.4f} secondi\n")
+    print(f"\nTempo totale di esecuzione: {fine:.4f} secondi\n")
     
     print("-------------------------------------------------------------------")
 

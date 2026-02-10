@@ -17,15 +17,14 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 from scipy.io.arff import loadarff
 
-# column_names = [
-#     "class", "cap-shape", "cap-surface", "cap-color", "bruises", "odor",
-#     "gill-attachment", "gill-spacing", "gill-size", "gill-color",
-#     "stalk-shape", "stalk-root", "stalk-surface-above-ring",
-#     "stalk-surface-below-ring", "stalk-color-above-ring",
-#     "stalk-color-below-ring", "veil-type", "veil-color", "ring-number",
-#     "ring-type", "spore-print-color", "population", "habitat"
-# ]
-
+column_names = [
+    "class", "cap-shape", "cap-surface", "cap-color", "bruises", "odor",
+    "gill-attachment", "gill-spacing", "gill-size", "gill-color",
+    "stalk-shape", "stalk-root", "stalk-surface-above-ring",
+    "stalk-surface-below-ring", "stalk-color-above-ring",
+    "stalk-color-below-ring", "veil-type", "veil-color", "ring-number",
+    "ring-type", "spore-print-color", "population", "habitat"
+]
 
 # Salva la matrice di confusione come un heatmap con annotazioni personalizzate per classificazione binaria
 def save_confusion_matrix(model, x_test, y_test, class_names, title, filename):
@@ -115,10 +114,52 @@ def train_rf_model(x_train, y_train):
     model.fit(x_train, y_train)
     return model
 
-# Preprocess data
-def preprocces_data(input_data):
+# Preprocessing dei dati per il dataset mushrooms
+def preprocces_data_mushrooms(input_data):
     
-    # Decode bytes to strings if necessary (scipy loads arff strings as bytes)
+    # la LabelEncoder trasforma le etichette di classe da stringhe a numeri interi (0 e 1)
+    le = LabelEncoder()
+    # qui viene applicato il LabelEncoder alla colonna 'class' del dataset
+    input_data['class'] = le.fit_transform(input_data['class'])
+    
+    # Recupera i nomi originali delle classi prima della codifica
+    original_classes = le.classes_
+    class_map = {'e': 'Edible', 'p': 'Poisonous'}
+    # mappa i nomi originali alle etichette desiderate
+    class_names = [class_map.get(str(c), str(c)) for c in original_classes]
+    
+    # Rimuoviamo la colonna 'veil-type' poiché ha un solo valore
+    input_data.drop('veil-type', axis=1, inplace=True)  
+
+    # Colonne rimosse per testare l'impatto sulla performance e sulla precisione
+    # input_data.drop('odor', axis=1, inplace=True)
+    # input_data.drop('gill-color', axis=1, inplace=True)
+    # input_data.drop('gill-size', axis=1, inplace=True)
+    # input_data.drop('spore-print-color', axis=1, inplace=True)
+    # input_data.drop('ring-type', axis=1, inplace=True)
+    # input_data.drop('stalk-root', axis=1, inplace=True)
+    # input_data.drop('population', axis=1, inplace=True)
+    # input_data.drop('bruises', axis=1, inplace=True)
+    
+    input_data['stalk-root'] = input_data['stalk-root'].replace('?', 'missing')  # Gestiamo i valori mancanti
+    
+    # Creiamo le variabili dummy per tutte le colonne tranne 'class'
+    x = pd.get_dummies(input_data.drop('class', axis=1))
+    # Recuperiamo i nomi delle feature dopo la codifica one-hot
+    feature_names = x.columns.tolist()
+    # La variabile target y è la colonna 'class' del dataset, che contiene le etichette di classe codificate come numeri interi
+    y = input_data['class']
+    # Questo di preciso è il passaggio in cui i dati vengono scalati usando lo StandardScaler,
+    # che normalizza le feature per avere media 0 e deviazione standard 1.
+    x_scaled = StandardScaler().fit_transform(x)
+    
+    return x_scaled, y, feature_names, class_names
+
+# Preprocessing dei dati per il dataset rice
+def preprocces_data_rice(input_data):
+    
+    # Quando si caricano i dati da un file ARFF, le colonne di tipo stringa vengono spesso interpretate come array di byte (dtype 'object' in pandas).
+    # Quindi, se la colonna 'Class' è di tipo object, cerchiamo di decodificarla in stringhe leggibili (utf-8) per poterla poi codificare con LabelEncoder.
     if pd.api.types.is_object_dtype(input_data['Class']):
         try:
              input_data['Class'] = input_data['Class'].str.decode('utf-8')
@@ -132,18 +173,17 @@ def preprocces_data(input_data):
     
     # Recupera i nomi originali delle classi prima della codifica
     class_names = list(le.classes_)
-    
-    # Creiamo le variabili dummy per tutte le colonne tranne 'class'
-    # Nel caso del dataset Rice, le feature sono numeriche, quindi non serve get_dummies, 
-    # ma manteniamo la logica di separazione X e y.
+     
+    # La variabile x contiene tutte le feature del dataset, escludendo la colonna 'Class' che è la variabile target.
     x = input_data.drop('Class', axis=1)
     
-    # Recuperiamo i nomi delle feature dopo la codifica one-hot
+    # Recuperiamo i nomi delle feature del dataset
     feature_names = x.columns.tolist()
+    
     # La variabile target y è la colonna 'class' del dataset, che contiene le etichette di classe codificate come numeri interi
     y = input_data['Class']
-    # Questo di preciso è il passaggio in cui i dati vengono scalati usando lo StandardScaler,
-    # che normalizza le feature per avere media 0 e deviazione standard 1.
+    
+    # Scaliamo le feature usando lo StandardScaler che normalizza le feature per avere media 0 e deviazione standard 1.
     x_scaled = StandardScaler().fit_transform(x)
     
     return x_scaled, y, feature_names, class_names
@@ -246,18 +286,34 @@ def plot_feature_importance(model, feature_names, title, filename, x_data=None, 
 
 def main():
 
+    print("Inserire 1 se si vogliono analizzare i modelli addestrati sul dataset Mushroom, 2 per il dataset Rice:")
+    choice = input("Scelta: ")
+    
+    x_train, x_test, y_train, y_test = None, None, None, None
     inizio = time.time()
-
-    # Caricamento del dataset
-    data, meta = loadarff('datasets/rice+cammeo+and+osmancik/Rice_Cammeo_Osmancik.arff')
-    df = pd.DataFrame(data)
     
     # Preprocessing dei dati e suddivisione in train e test set
     print("\nPreprocessing dei dati...")
-    # i valori che ritorniamo da questa funzione sono: x_scaled (le feature scalate),
-    # y (le etichette di classe), feature_names (i nomi delle feature) e 
-    # class_names (i nomi delle classi originali).
-    x_scaled, y, feature_names, class_names = preprocces_data(df)
+    
+    if choice == '1':
+        # Caricamento del dataset
+        df = pd.read_csv('datasets/mushroom/mushroom.csv', header=None, names=column_names)
+        # i valori che ritorniamo da questa funzione sono: x_scaled (le feature scalate),
+        # y (le etichette di classe), feature_names (i nomi delle feature dopo la codifica one-hot) e 
+        # class_names (i nomi delle classi originali mappati a 'Edible' e 'Poisonous').
+        x_scaled, y, feature_names, class_names = preprocces_data_mushrooms(df)
+    elif choice == '2':
+        # Caricamento del dataset
+        data, meta = loadarff('datasets/rice+cammeo+and+osmancik/Rice_Cammeo_Osmancik.arff')
+        df = pd.DataFrame(data)
+        # i valori che ritorniamo da questa funzione sono: x_scaled (le feature scalate),
+        # y (le etichette di classe), feature_names (i nomi delle feature) e 
+        # class_names (i nomi delle classi originali).
+        x_scaled, y, feature_names, class_names = preprocces_data_rice(df)
+    else:
+        print("Scelta non valida. Uscita.")
+        return
+    
     # suddividiamo i dati in un set di addestramento (80%) e un set di test (20%) usando la funzione train_test_split di scikit-learn, 
     # con un random_state fisso per garantire la riproducibilità.
     x_train, x_test, y_train, y_test = train_test_split(x_scaled, y, test_size=0.2, random_state=42)
