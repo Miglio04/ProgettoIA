@@ -191,11 +191,11 @@ def preprocces_data_rice(input_data):
 # Visualizza l'albero di decisione
 def visualize_decision_tree(model, feature_names, class_names, filename):
     # Imposta la dimensione della figura per la visualizzazione dell'albero
-    plt.figure(figsize=(20, 10))
+    plt.figure(figsize=(40, 20))
     # plot_tree crea la rappresentazione grafica dell'albero
-    plot_tree(model, feature_names=feature_names, class_names=class_names, filled=True, rounded=True, fontsize=10)
-    plt.title("Visualizzazione Albero di Decisione")
-    plt.savefig(filename)
+    plot_tree(model, feature_names=feature_names, class_names=class_names, filled=True, rounded=True, fontsize=12)
+    plt.title("Visualizzazione Albero di Decisione", fontsize=20)
+    plt.savefig(filename, dpi=300, bbox_inches='tight')
     plt.close()
 
 # Funzione per visualizzare i confini decisionali del modello k-NN dopo aver ridotto le dimensioni a 2 usando PCA
