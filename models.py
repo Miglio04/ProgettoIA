@@ -375,20 +375,20 @@ def main():
 
 
     print("Salvataggio matrici di confusione...")
-    save_confusion_matrix(dt, x_test, y_test, class_names, "Decision Tree", "confusion_matrix_dt.png")
-    save_confusion_matrix(knn, x_test, y_test, class_names, "k-NN", "confusion_matrix_knn.png")
-    save_confusion_matrix(rf, x_test, y_test, class_names, "Random Forest", "confusion_matrix_rf.png")
+    save_confusion_matrix(dt, x_test, y_test, class_names, "Decision Tree", "graphs/confusion_matrix_dt.png")
+    save_confusion_matrix(knn, x_test, y_test, class_names, "k-NN", "graphs/confusion_matrix_knn.png")
+    save_confusion_matrix(rf, x_test, y_test, class_names, "Random Forest", "graphs/confusion_matrix_rf.png")
     print("\nMatrici salvate come immagini PNG.")
     
     print("-------------------------------------------------------------------")
 
     print("\nGenerazione grafici aggiuntivi...\n")
-    visualize_decision_tree(dt, feature_names, class_names, "decision_tree_viz.png")
-    visualize_knn_boundaries(x_train, y_train, k=5, class_names=class_names, filename="knn_decision_boundaries.png")
+    visualize_decision_tree(dt, feature_names, class_names, "graphs/decision_tree_viz.png")
+    visualize_knn_boundaries(x_train, y_train, k=5, class_names=class_names, filename="graphs/knn_decision_boundaries.png")
     
-    plot_feature_importance(knn, feature_names, "k-NN", "feature_importance_knn.png", x_data=x_test, y_data=y_test)
-    plot_feature_importance(dt, feature_names, "Decision Tree", "feature_importance_dt.png")
-    plot_feature_importance(rf, feature_names, "Random Forest", "feature_importance_rf.png")
+    plot_feature_importance(knn, feature_names, "k-NN", "graphs/feature_importance_knn.png", x_data=x_test, y_data=y_test)
+    plot_feature_importance(dt, feature_names, "Decision Tree", "graphs/feature_importance_dt.png")
+    plot_feature_importance(rf, feature_names, "Random Forest", "graphs/feature_importance_rf.png")
     
     print("-------------------------------------------------------------------")
 
