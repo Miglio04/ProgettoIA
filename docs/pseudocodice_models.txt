@@ -60,3 +60,7 @@ FUNCTION plot_feature_importance(model, feature_names, title, filename, x_data, 
     
     sort the features in descending order based on importance, create the bar graph and save
     it in a .png file
+
+FUNCTION main()
+    The main enables the user to choose one of the datasets to train and test the models,
+    then calls all the functions and prints all the results and statistics
